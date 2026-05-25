@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SN 风险核验工具</title>
+    <title>SN 风险核验工具 (增强版)</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #388e3c;
+            --danger-color: #d32f2f;
+            --warning-color: #f57c00;
+            --pending-color: #555;
+            --bg-color: #f7f9fc;
+            --text-color: #333;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
@@ -13,20 +23,76 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f7f9fc;
+            background-color: var(--bg-color);
+            color: var(--text-color);
         }
-        h2 {
-            color: #333;
+
+        h2 { margin-bottom: 20px; text-align: center; }
+
+        /* 顶部按钮 */
+        .controls {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
-        }
-        #reader {
             width: 100%;
             max-width: 500px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        /* 扫码/照片区域 */
+        #interactive-area {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #reader-container {
+            width: 100%;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             background: #fff;
+            display: none; /* 初始隐藏 */
         }
+        #reader { width: 100%; }
+
+        #photo-container {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #fff;
+            display: none; /* 初始隐藏 */
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        #photo-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        /* 隐藏的文件输入 */
+        #camera-input { display: none; }
+
+        /* 结果显示 */
         #result-box {
             margin-top: 20px;
             padding: 20px;
@@ -38,11 +104,13 @@
             font-weight: bold;
             background: #fff;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
         }
-        .status-risk { color: #d32f2f; background-color: #ffebee !important; }
-        .status-safe { color: #388e3c; background-color: #e8f5e9 !important; }
-        .status-invalid { color: #f57c00; background-color: #fff3e0 !important; }
-        .status-pending { color: #555; }
+        .status-risk { color: var(--danger-color); background-color: #ffebee !important; }
+        .status-safe { color: var(--success-color); background-color: #e8f5e9 !important; }
+        .status-invalid { color: var(--warning-color); background-color: #fff3e0 !important; }
+        .status-pending { color: var(--pending-color); }
+        .status-loading { color: #888; font-style: italic; }
         
         #scanned-sn {
             display: block;
@@ -50,7 +118,15 @@
             color: #666;
             margin-top: 10px;
             font-weight: normal;
-            word-break: break-all; /* 防止长SN超长换行错乱 */
+            word-break: break-all;
+        }
+        
+        #error-msg {
+            display: block;
+            font-size: 14px;
+            color: var(--danger-color);
+            margin-top: 10px;
+            font-weight: normal;
         }
     </style>
 </head>
@@ -58,34 +134,59 @@
 
     <h2>SN 风险核验系统</h2>
     
-    <div id="reader"></div>
+    <div class="controls">
+        <button class="btn btn-primary" onclick="startLiveScanner()">开启实时扫码</button>
+        <button class="btn btn-secondary" onclick="triggerCamera()">点击拍照识别</button>
+    </div>
+
+    <div id="interactive-area">
+        <div id="reader-container">
+            <div id="reader"></div>
+        </div>
+
+        <div id="photo-container">
+            <img id="photo-preview" src="" alt="照片预览" />
+            <div class="status-loading">正在识别中，请稍候...</div>
+        </div>
+    </div>
+
+    <input type="file" id="camera-input" accept="image/*" capture="environment" />
+
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <div id="result-box" class="status-pending">
-        等待扫码...
+        <span id="result-text">等待扫码或拍照...</span>
         <span id="scanned-sn"></span>
+        <span id="error-msg"></span>
     </div>
 
     <script>
-        // 存储风险 SN 的集合
+        const DOM = {
+            readerContainer: document.getElementById('reader-container'),
+            photoContainer: document.getElementById('photo-container'),
+            photoPreview: document.getElementById('photo-preview'),
+            cameraInput: document.getElementById('camera-input'),
+            resultBox: document.getElementById('result-box'),
+            resultText: document.getElementById('result-text'),
+            scannedSn: document.getElementById('scanned-sn'),
+            errorMsg: document.getElementById('error-msg'),
+            canvas: document.getElementById('canvas'),
+            ctx: document.getElementById('canvas').getContext('2d')
+        };
+
         let riskSNSet = new Set();
+        let html5QrcodeScanner = null;
+        const html5QrCode = new Html5Qrcode("reader"); // 用于拍照模式的独立实例
 
         // 1. 加载 CSV 文件
         async function loadCSV() {
             try {
-                // Vercel 部署后，直接请求同级目录下的 Risk-SN.csv
                 const response = await fetch('Risk-SN.csv');
-                if (!response.ok) {
-                    throw new Error('无法读取 Risk-SN.csv 文件，请检查该文件是否与网页在同一目录下。');
-                }
+                if (!response.ok) throw new Error('无法读取 Risk-SN.csv 文件。');
                 const csvText = await response.text();
-                
-                // 解析 CSV（按行分割，去除首尾空格）
-                const lines = csvText.split('\n');
-                lines.forEach(line => {
-                    const cleanLine = line.trim().split(',')[0]; // 取第一列
-                    if (cleanLine) {
-                        riskSNSet.add(cleanLine);
-                    }
+                csvText.split(/\r?\n/).forEach(line => {
+                    const cleanSN = line.trim().split(',')[0];
+                    if (cleanSN) riskSNSet.add(cleanSN);
                 });
                 console.log(`成功加载 ${riskSNSet.size} 个风险 SN。`);
             } catch (error) {
@@ -93,57 +194,159 @@
             }
         }
 
-        // 2. 验证是否为标准 SN 格式 (修改为：23~25位数字或字母)
-        function isValidSN(text) {
-            // ^[A-Za-z0-9]{23,25}$ 表示必须由英文字母或数字组成，且长度在 23 到 25 位之间
-            // 如果你们的 SN 包含特殊字符（如横杠 -），可将下方正则改为：/^[A-Za-z0-9\-]{23,25}$/
-            const snRegex = /^[A-Za-z0-9]{23,25}$/; 
-            return snRegex.test(text);
-        }
+        // 2. 验证 SN 格式 (23~25位)
+        const isValidSN = (text) => /^[A-Za-z0-9]{23,25}$/.test(text);
 
-        // 3. 处理扫码结果
-        function onScanSuccess(decodedText, decodedResult) {
-            const resultBox = document.getElementById('result-box');
-            const scannedSnSpan = document.getElementById('scanned-sn');
-            
-            // 去除可能存在的首尾空格
-            const currentSN = decodedText.trim();
-            scannedSnSpan.innerText = `扫描结果: ${currentSN}`;
+        // 3. 核心：处理 SN 号
+        function processSN(rawText) {
+            const sn = rawText.trim();
+            DOM.scannedSn.innerText = `识别结果: ${sn}`;
+            DOM.errorMsg.innerText = ''; // 清空之前的错误
 
-            // 判断逻辑
-            if (!isValidSN(currentSN)) {
-                resultBox.className = 'status-invalid';
-                resultBox.childNodes[0].nodeValue = "非SN";
-            } else if (riskSNSet.has(currentSN)) {
-                resultBox.className = 'status-risk';
-                resultBox.childNodes[0].nodeValue = "风险";
-                // 触发手机震动提示（部分手机浏览器支持）
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
+            if (!isValidSN(sn)) {
+                DOM.resultBox.className = 'status-invalid';
+                DOM.resultText.innerText = "非SN";
+            } else if (riskSNSet.has(sn)) {
+                DOM.resultBox.className = 'status-risk';
+                DOM.resultText.innerText = "风险";
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             } else {
-                resultBox.className = 'status-safe';
-                resultBox.childNodes[0].nodeValue = "安全";
+                DOM.resultBox.className = 'status-safe';
+                DOM.resultText.innerText = "安全";
             }
         }
 
-        function onScanFailure(error) {
-            // 持续扫码时，未对准条码会产生报错，这里选择忽略它，不影响程序运行
+        // --- 方法1：实时扫码 ---
+
+        function onScanSuccess(decodedText) {
+            processSN(decodedText);
         }
 
-        // 4. 页面加载完成后自动初始化
+        function startLiveScanner() {
+            // 切换 UI
+            DOM.photoContainer.style.display = 'none';
+            DOM.readerContainer.style.display = 'block';
+            resetResult();
+
+            // 初始化或重新启动扫码器
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().then(() => {
+                    html5QrcodeScanner.render(onScanSuccess);
+                });
+            } else {
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "reader",
+                    { fps: 15, qrbox: { width: 320, height: 120 } },
+                    false
+                );
+                html5QrcodeScanner.render(onScanSuccess);
+            }
+        }
+
+        // --- 方法2：拍照识别 ---
+
+        // 触发隐藏的文件输入
+        function triggerCamera() {
+            DOM.cameraInput.click();
+        }
+
+        // 处理用户拍的照片
+        DOM.cameraInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                handlePhoto(file);
+            }
+        });
+
+        async function handlePhoto(file) {
+            // 切换 UI，隐藏扫码器
+            DOM.readerContainer.style.display = 'none';
+            if (html5QrcodeScanner) html5QrcodeScanner.clear();
+            DOM.photoContainer.style.display = 'block';
+            resetResult('loading'); // 显示正在识别
+            DOM.scannedSn.innerText = '';
+
+            // 显示图片预览
+            const imageUrl = URL.createObjectURL(file);
+            DOM.photoPreview.src = imageUrl;
+
+            // 优化：调整图像大小后再识别，防止过大的手机照片导致卡顿
+            const resizedImage = await resizeImage(file, 1024, 768);
+
+            // 开始识别
+            html5QrCode.scanFile(resizedImage, false)
+                .then(decodedText => {
+                    resetResult();
+                    processSN(decodedText);
+                    DOM.photoContainer.querySelector('.status-loading').style.display = 'none';
+                })
+                .catch(err => {
+                    console.error("识别失败:", err);
+                    resetResult();
+                    DOM.resultBox.className = 'status-invalid';
+                    DOM.resultText.innerText = "识别失败";
+                    DOM.errorMsg.innerText = "未在照片中检测到条形码，请确保条码清晰对焦并重试。";
+                    DOM.scannedSn.innerText = '';
+                    DOM.photoContainer.querySelector('.status-loading').style.display = 'none';
+                });
+        }
+
+        // 用于调整图像大小的助手函数
+        function resizeImage(file, maxWidth, maxHeight) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+
+                        // 计算新的尺寸
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = height * (maxWidth / width);
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = width * (maxHeight / height);
+                                height = maxHeight;
+                            }
+                        }
+
+                        // 将图像绘制到 Canvas 上以调整大小
+                        DOM.canvas.width = width;
+                        DOM.canvas.height = height;
+                        DOM.ctx.drawImage(img, 0, 0, width, height);
+                        DOM.canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                    };
+                };
+                reader.onerror = reject;
+            });
+        }
+
+        // 通用结果重置函数
+        function resetResult(status = 'pending') {
+            DOM.errorMsg.innerText = '';
+            DOM.scannedSn.innerText = '';
+            DOM.photoContainer.querySelector('.status-loading').style.display = (status === 'loading' ? 'block' : 'none');
+            
+            if (status === 'loading') {
+                DOM.resultBox.className = 'status-loading';
+                DOM.resultText.innerText = "识别中...";
+            } else {
+                DOM.resultBox.className = 'status-pending';
+                DOM.resultText.innerText = "等待扫码或拍照...";
+            }
+        }
+
+        // 初始化
         window.onload = async () => {
             await loadCSV();
-            
-            // 初始化扫码器
-            const html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
-                { 
-                    fps: 15, 
-                    qrbox: { width: 320, height: 120 }, // 针对 23~25 位较长的条形码，加宽了扫描框
-                    aspectRatio: 1.0
-                }, 
-                /* verbose= */ false
-            );
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+            // 初始显示实时扫码，你也可以修改为不显示任何内容
+            startLiveScanner(); 
         };
     </script>
 </body>
