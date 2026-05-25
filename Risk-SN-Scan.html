@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SN 风险核验工具</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f7f9fc;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #fff;
+        }
+        #result-box {
+            margin-top: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 460px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .status-risk { color: #d32f2f; background-color: #ffebee !important; }
+        .status-safe { color: #388e3c; background-color: #e8f5e9 !important; }
+        .status-invalid { color: #f57c00; background-color: #fff3e0 !important; }
+        .status-pending { color: #555; }
+        
+        #scanned-sn {
+            display: block;
+            font-size: 16px;
+            color: #666;
+            margin-top: 10px;
+            font-weight: normal;
+            word-break: break-all; /* 防止长SN超长换行错乱 */
+        }
+    </style>
+</head>
+<body>
+
+    <h2>SN 风险核验系统</h2>
+    
+    <div id="reader"></div>
+
+    <div id="result-box" class="status-pending">
+        等待扫码...
+        <span id="scanned-sn"></span>
+    </div>
+
+    <script>
+        // 存储风险 SN 的集合
+        let riskSNSet = new Set();
+
+        // 1. 加载 CSV 文件
+        async function loadCSV() {
+            try {
+                // Vercel 部署后，直接请求同级目录下的 Risk-SN.csv
+                const response = await fetch('Risk-SN.csv');
+                if (!response.ok) {
+                    throw new Error('无法读取 Risk-SN.csv 文件，请检查该文件是否与网页在同一目录下。');
+                }
+                const csvText = await response.text();
+                
+                // 解析 CSV（按行分割，去除首尾空格）
+                const lines = csvText.split('\n');
+                lines.forEach(line => {
+                    const cleanLine = line.trim().split(',')[0]; // 取第一列
+                    if (cleanLine) {
+                        riskSNSet.add(cleanLine);
+                    }
+                });
+                console.log(`成功加载 ${riskSNSet.size} 个风险 SN。`);
+            } catch (error) {
+                alert("CSV文件加载失败！\n错误信息: " + error.message);
+            }
+        }
+
+        // 2. 验证是否为标准 SN 格式 (修改为：23~25位数字或字母)
+        function isValidSN(text) {
+            // ^[A-Za-z0-9]{23,25}$ 表示必须由英文字母或数字组成，且长度在 23 到 25 位之间
+            // 如果你们的 SN 包含特殊字符（如横杠 -），可将下方正则改为：/^[A-Za-z0-9\-]{23,25}$/
+            const snRegex = /^[A-Za-z0-9]{23,25}$/; 
+            return snRegex.test(text);
+        }
+
+        // 3. 处理扫码结果
+        function onScanSuccess(decodedText, decodedResult) {
+            const resultBox = document.getElementById('result-box');
+            const scannedSnSpan = document.getElementById('scanned-sn');
+            
+            // 去除可能存在的首尾空格
+            const currentSN = decodedText.trim();
+            scannedSnSpan.innerText = `扫描结果: ${currentSN}`;
+
+            // 判断逻辑
+            if (!isValidSN(currentSN)) {
+                resultBox.className = 'status-invalid';
+                resultBox.childNodes[0].nodeValue = "非SN";
+            } else if (riskSNSet.has(currentSN)) {
+                resultBox.className = 'status-risk';
+                resultBox.childNodes[0].nodeValue = "风险";
+                // 触发手机震动提示（部分手机浏览器支持）
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
+            } else {
+                resultBox.className = 'status-safe';
+                resultBox.childNodes[0].nodeValue = "安全";
+            }
+        }
+
+        function onScanFailure(error) {
+            // 持续扫码时，未对准条码会产生报错，这里选择忽略它，不影响程序运行
+        }
+
+        // 4. 页面加载完成后自动初始化
+        window.onload = async () => {
+            await loadCSV();
+            
+            // 初始化扫码器
+            const html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { 
+                    fps: 15, 
+                    qrbox: { width: 320, height: 120 }, // 针对 23~25 位较长的条形码，加宽了扫描框
+                    aspectRatio: 1.0
+                }, 
+                /* verbose= */ false
+            );
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        };
+    </script>
+</body>
+</html>
