@@ -1,0 +1,29 @@
+Signature-Version: 1.0
+Created-By: Android Gradle 8.7.3
+SHA-256-Digest-Manifest: 6PIsF8fSaJ+DKJpyIpgMwOlczsDuVURTtvwyN0zE+G0=
+X-Android-APK-Signed: 2
+
+Name: AndroidManifest.xml
+SHA-256-Digest: pAh53C7VGsCH6AjgVS6jakpPhBWi4yZauogy6ONhAwE=
+
+Name: META-INF/com/android/build/gradle/app-metadata.properties
+SHA-256-Digest: tMpL0bvzS/ABhU8xReE0obMyu5/Qfaqwl1NfnqIjcb0=
+
+Name: META-INF/version-control-info.textproto
+SHA-256-Digest: bGPYrKSsmb5tpmtltqs82gWayRJtXwCM3VXJFk8mnb8=
+
+Name: assets/risk-sn.csv
+SHA-256-Digest: ycEZJbSZdTSGYWofzjkLHf79V5x2FTfwjTcFJjFq8Wk=
+
+Name: classes.dex
+SHA-256-Digest: xcrFAzuTjsizRQujVZ/0p8PVNjDbvVKiW87KVzwQaKY=
+
+Name: lib/arm64-v8a/libqrscan.so
+SHA-256-Digest: JgedJ/V+ViIJOaOIDPCcD8LOxa4WKCHcU2TZvZH2DNg=
+
+Name: lib/armeabi-v7a/libqrscan.so
+SHA-256-Digest: H+4Y89pa3uXUFg1+sCjgMEznnj0gSmeqxlW8ax0UEcM=
+
+Name: resources.arsc
+SHA-256-Digest: gui5ckVD8EAT8E895b9FbB1wc3qPxUeyJpglOxowXxc=
+

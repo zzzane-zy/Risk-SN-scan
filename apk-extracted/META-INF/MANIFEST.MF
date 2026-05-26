@@ -1,0 +1,28 @@
+Manifest-Version: 1.0
+Built-By: Signflinger
+Created-By: Android Gradle 8.7.3
+
+Name: AndroidManifest.xml
+SHA-256-Digest: 8ZR2oAbOxX/gAoP+AO4AkI4jS3ceGJfTvGC/00wfcT4=
+
+Name: META-INF/com/android/build/gradle/app-metadata.properties
+SHA-256-Digest: fc8TDUh0Jw5FDexQZJMEwPVvjIZuK9ACUwqmZBPYjC0=
+
+Name: META-INF/version-control-info.textproto
+SHA-256-Digest: ONN3r6drY2Tlv1Uc9P/sGogaRhAqAEf1I/vxSODfaSg=
+
+Name: assets/risk-sn.csv
+SHA-256-Digest: KUn6fZQfHnT9mMr5yYEHAZcA0voBm0NpCuznwSglNkk=
+
+Name: classes.dex
+SHA-256-Digest: EpDY2mF1yETp613y/LngctIgMQ+DHW8LHZhFYmKK584=
+
+Name: lib/arm64-v8a/libqrscan.so
+SHA-256-Digest: LxojTma6cYFdcr4rphm/vgpyJtgHLNawJyanwbyCZ7o=
+
+Name: lib/armeabi-v7a/libqrscan.so
+SHA-256-Digest: R3C4l6OIn1221S9QkFtzxQVwmVrQLCLLQvWUn0X7O/g=
+
+Name: resources.arsc
+SHA-256-Digest: B9LgmKeiTA4c6N5Bb638MyrbNL1F06EwLLxabwyPPww=
+

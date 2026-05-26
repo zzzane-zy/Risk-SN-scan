@@ -98,3 +98,291 @@ h1 {
 .entry-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.scanner-panel {
+  padding: 12px;
+}
+
+.camera-stage {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  min-height: 360px;
+  border-radius: 8px;
+  background: #111713;
+}
+
+#preview,
+.camera-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#preview {
+  object-fit: cover;
+  display: none;
+}
+
+.camera-fallback {
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  color: #d9e4dc;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.35;
+  background:
+    linear-gradient(0deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.32)),
+    repeating-linear-gradient(45deg, #16221a 0 12px, #111713 12px 24px);
+}
+
+.camera-stage.is-live #preview {
+  display: block;
+}
+
+.camera-stage.is-live .camera-fallback {
+  display: none;
+}
+
+.scan-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(76%, 340px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 3px solid #1bc46c;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 999px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.instruction {
+  margin: 12px 2px 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.status-line {
+  min-height: 36px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f9fbf8;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.status-line.ok {
+  border-color: #c5e6cf;
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.status-line.warn {
+  border-color: #ead495;
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.status-line.risk {
+  border-color: #f0b7ae;
+  color: var(--risk);
+  background: var(--risk-soft);
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 78px;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0 14px;
+  font-weight: 750;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.secondary-button {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.primary-button:active,
+.secondary-button:active {
+  transform: translateY(1px);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.file-button {
+  display: grid;
+  place-items: center;
+}
+
+.file-button input {
+  display: none;
+}
+
+.entry-panel {
+  padding: 13px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.entry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 98px;
+  gap: 9px;
+}
+
+#snInput {
+  min-width: 0;
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #ffffff;
+  letter-spacing: 0;
+}
+
+#snInput:focus,
+button:focus-visible,
+.file-button:focus-within {
+  outline: 3px solid rgba(20, 131, 79, 0.24);
+  outline-offset: 2px;
+}
+
+.compact {
+  min-height: 46px;
+}
+
+.result-dialog {
+  width: min(calc(100% - 34px), 420px);
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+}
+
+.result-dialog::backdrop {
+  background: rgba(8, 12, 10, 0.45);
+}
+
+.dialog-body {
+  margin: 0;
+  padding: 22px;
+}
+
+.result-mark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.result-dialog.risk .result-mark {
+  background: var(--risk-soft);
+  color: var(--risk);
+}
+
+.result-dialog.ok .result-mark {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.dialog-body h2 {
+  margin: 14px 0 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.result-sn {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.result-message {
+  margin: 12px 0 20px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.dialog-button {
+  width: 100%;
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding-inline: 12px;
+  }
+
+  h1 {
+    font-size: 25px;
+  }
+
+  .camera-stage {
+    min-height: 320px;
+  }
+
+  .button-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .file-button {
+    grid-column: 1 / -1;
+  }
+
+  .entry-row {
+    grid-template-columns: 1fr;
+  }
+}
