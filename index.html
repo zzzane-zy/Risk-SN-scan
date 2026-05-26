@@ -1,336 +1,66 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SN 风险核验工具 (极速版)</title>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <style>
-        :root {
-            --primary-color: #007bff;
-            --success-color: #388e3c;
-            --danger-color: #d32f2f;
-            --warning-color: #f57c00;
-            --pending-color: #555;
-            --bg-color: #f7f9fc;
-            --text-color: #333;
-        }
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f1f18" />
+    <title>Risk SN Check</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="mode-label">Scan</p>
+          <h1>Risk SN Check</h1>
+        </div>
+        <span id="csvBadge" class="csv-badge">Risk_SN.csv</span>
+      </header>
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-
-        h2 { margin-bottom: 20px; text-align: center; }
-
-        /* 顶部按钮 */
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 500px;
-        }
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            text-align: center;
-            font-weight: bold;
-        }
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-primary:hover { background-color: #0056b3; }
-        .btn-secondary { background-color: #6c757d; color: white; }
-        .btn-secondary:hover { background-color: #5a6268; }
-
-        /* 扫码/照片区域 */
-        #interactive-area {
-            width: 100%;
-            max-width: 500px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        #reader-container, #photo-container {
-            width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            background: #fff;
-            display: none;
-        }
-        
-        #reader { width: 100%; }
-
-        #photo-container {
-            padding: 10px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        #photo-preview {
-            max-width: 100%;
-            max-height: 300px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        
-        #camera-input { display: none; }
-
-        /* 结果显示 */
-        #result-box {
-            margin-top: 20px;
-            padding: 20px;
-            width: 100%;
-            max-width: 460px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background-color 0.2s;
-        }
-        .status-risk { color: var(--danger-color); background-color: #ffebee !important; }
-        .status-safe { color: var(--success-color); background-color: #e8f5e9 !important; }
-        .status-invalid { color: var(--warning-color); background-color: #fff3e0 !important; }
-        .status-pending { color: var(--pending-color); }
-        .status-loading { color: #888; font-style: italic; font-size: 16px; margin-top: 10px;}
-        
-        #scanned-sn {
-            display: block;
-            font-size: 16px;
-            color: #666;
-            margin-top: 10px;
-            font-weight: normal;
-            word-break: break-all;
-        }
-        
-        #error-msg {
-            display: block;
-            font-size: 14px;
-            color: var(--danger-color);
-            margin-top: 10px;
-            font-weight: normal;
-        }
-    </style>
-</head>
-<body>
-
-    <h2>SN 风险核验系统</h2>
-    
-    <div class="controls">
-        <button class="btn btn-primary" onclick="startLiveScanner()">实时极速扫码</button>
-        <button class="btn btn-secondary" onclick="triggerCamera()">拍照识别</button>
-    </div>
-
-    <div id="interactive-area">
-        <div id="reader-container">
-            <div id="reader"></div>
+      <section class="scanner-panel" aria-label="Scanner">
+        <div class="camera-stage">
+          <video id="preview" autoplay muted playsinline></video>
+          <div id="cameraFallback" class="camera-fallback">
+            <span>P-SN / Target right-side P-SN</span>
+          </div>
+          <div class="scan-frame" aria-hidden="true"></div>
         </div>
 
-        <div id="photo-container">
-            <img id="photo-preview" src="" alt="照片预览" />
-            <div class="status-loading">正在极速提取条码，请稍候...</div>
+        <p class="instruction">
+          Place the right-side P-starting SN in the green frame. Other codes are ignored.
+        </p>
+
+        <div id="status" class="status-line" role="status">Loading Risk_SN.csv...</div>
+
+        <div class="button-row">
+          <button id="scanButton" class="primary-button" type="button">Scan</button>
+          <button id="stopButton" class="secondary-button" type="button" disabled>Stop</button>
+          <label class="secondary-button file-button">
+            CSV
+            <input id="csvFile" type="file" accept=".csv,text/csv,text/plain" />
+          </label>
         </div>
-    </div>
+      </section>
 
-    <input type="file" id="camera-input" accept="image/*" capture="environment" />
-    <canvas id="canvas" style="display:none;"></canvas>
+      <section class="entry-panel" aria-label="Manual check">
+        <label class="field-label" for="snInput">SN</label>
+        <div class="entry-row">
+          <input id="snInput" autocomplete="off" inputmode="text" placeholder="Enter SN" />
+          <button id="checkButton" class="primary-button compact" type="button">Check</button>
+        </div>
+      </section>
+    </main>
 
-    <div id="result-box" class="status-pending">
-        <span id="result-text">等待扫码或拍照...</span>
-        <span id="scanned-sn"></span>
-        <span id="error-msg"></span>
-    </div>
+    <dialog id="resultDialog" class="result-dialog">
+      <form method="dialog" class="dialog-body">
+        <div id="resultMark" class="result-mark">NOTICE</div>
+        <h2 id="resultTitle">No result</h2>
+        <p id="resultSn" class="result-sn"></p>
+        <p id="resultMessage" class="result-message">No QR content to check.</p>
+        <button class="primary-button dialog-button" value="ok" autofocus>OK</button>
+      </form>
+    </dialog>
 
-    <script>
-        const DOM = {
-            readerContainer: document.getElementById('reader-container'),
-            photoContainer: document.getElementById('photo-container'),
-            photoPreview: document.getElementById('photo-preview'),
-            cameraInput: document.getElementById('camera-input'),
-            resultBox: document.getElementById('result-box'),
-            resultText: document.getElementById('result-text'),
-            scannedSn: document.getElementById('scanned-sn'),
-            errorMsg: document.getElementById('error-msg'),
-            canvas: document.getElementById('canvas'),
-            ctx: document.getElementById('canvas').getContext('2d')
-        };
-
-        let riskSNSet = new Set();
-        let html5QrcodeScanner = null;
-        
-        // 核心提速配置项：锁定格式，开启原生加速
-        const scannerConfig = {
-            fps: 30, // 提升帧率
-            qrbox: { width: 350, height: 100 }, // 针对长条码优化的扁平扫描框
-            aspectRatio: 1.0,
-            formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.CODE_128, 
-                Html5QrcodeSupportedFormats.CODE_39 
-            ], // 仅支持最常见的 SN 条形码格式，极大提升速度
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true // 调用系统底层原生扫码能力（如支持）
-            }
-        };
-
-        const html5QrCode = new Html5Qrcode("reader", scannerConfig);
-
-        // 1. 加载 CSV 文件
-        async function loadCSV() {
-            try {
-                const response = await fetch('Risk-SN.csv');
-                if (!response.ok) throw new Error('读取 CSV 失败');
-                const csvText = await response.text();
-                csvText.split(/\r?\n/).forEach(line => {
-                    const cleanSN = line.trim().split(',')[0];
-                    if (cleanSN) riskSNSet.add(cleanSN);
-                });
-            } catch (error) {
-                console.error("CSV加载失败:", error);
-            }
-        }
-
-        // 2. 验证 SN 格式 (23~25位)
-        const isValidSN = (text) => /^[A-Za-z0-9]{23,25}$/.test(text);
-
-        // 3. 核心处理逻辑
-        function processSN(rawText) {
-            const sn = rawText.trim();
-            DOM.scannedSn.innerText = `识别结果: ${sn}`;
-            DOM.errorMsg.innerText = '';
-
-            if (!isValidSN(sn)) {
-                DOM.resultBox.className = 'status-invalid';
-                DOM.resultText.innerText = "非SN";
-            } else if (riskSNSet.has(sn)) {
-                DOM.resultBox.className = 'status-risk';
-                DOM.resultText.innerText = "风险";
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-            } else {
-                DOM.resultBox.className = 'status-safe';
-                DOM.resultText.innerText = "安全";
-            }
-        }
-
-        // --- 方法1：实时扫码 ---
-        function onScanSuccess(decodedText) {
-            processSN(decodedText);
-            // 可选：扫码成功后暂停扫码，防止连续触发，点击按钮可重新扫码
-            // if (html5QrcodeScanner) html5QrcodeScanner.pause(); 
-        }
-
-        function startLiveScanner() {
-            DOM.photoContainer.style.display = 'none';
-            DOM.readerContainer.style.display = 'block';
-            resetResult();
-
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear().then(() => {
-                    initScanner();
-                });
-            } else {
-                initScanner();
-            }
-        }
-
-        function initScanner() {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", scannerConfig, false);
-            html5QrcodeScanner.render(onScanSuccess);
-        }
-
-        // --- 方法2：拍照识别 ---
-        function triggerCamera() {
-            DOM.cameraInput.click();
-        }
-
-        DOM.cameraInput.addEventListener('change', function(e) {
-            if (e.target.files && e.target.files.length > 0) {
-                handlePhoto(e.target.files[0]);
-            }
-        });
-
-        async function handlePhoto(file) {
-            DOM.readerContainer.style.display = 'none';
-            if (html5QrcodeScanner) html5QrcodeScanner.clear();
-            DOM.photoContainer.style.display = 'block';
-            resetResult('loading');
-            DOM.scannedSn.innerText = '';
-
-            const imageUrl = URL.createObjectURL(file);
-            DOM.photoPreview.src = imageUrl;
-
-            // 图像压缩提速：针对条形码，不需要千万像素，压缩后识别极快
-            const resizedImage = await resizeImage(file, 1200, 1200);
-
-            html5QrCode.scanFile(resizedImage, false)
-                .then(decodedText => {
-                    resetResult();
-                    processSN(decodedText);
-                    DOM.photoContainer.querySelector('.status-loading').style.display = 'none';
-                })
-                .catch(err => {
-                    resetResult();
-                    DOM.resultBox.className = 'status-invalid';
-                    DOM.resultText.innerText = "识别失败";
-                    DOM.errorMsg.innerText = "条码无法解析。请靠近条码，确保对焦清晰且没有反光，或尝试【实时极速扫码】。";
-                    DOM.scannedSn.innerText = '';
-                    DOM.photoContainer.querySelector('.status-loading').style.display = 'none';
-                });
-        }
-
-        function resizeImage(file, maxWidth, maxHeight) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = function() {
-                        let width = img.width, height = img.height;
-                        if (width > height) {
-                            if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
-                        } else {
-                            if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
-                        }
-                        DOM.canvas.width = width;
-                        DOM.canvas.height = height;
-                        DOM.ctx.drawImage(img, 0, 0, width, height);
-                        DOM.canvas.toBlob(resolve, 'image/jpeg', 0.9);
-                    };
-                };
-                reader.onerror = reject;
-            });
-        }
-
-        function resetResult(status = 'pending') {
-            DOM.errorMsg.innerText = '';
-            DOM.scannedSn.innerText = '';
-            DOM.photoContainer.querySelector('.status-loading').style.display = (status === 'loading' ? 'block' : 'none');
-            if (status === 'loading') {
-                DOM.resultBox.className = 'status-loading';
-                DOM.resultText.innerText = "处理中...";
-            } else {
-                DOM.resultBox.className = 'status-pending';
-                DOM.resultText.innerText = "等待扫码或拍照...";
-            }
-        }
-
-        window.onload = async () => {
-            await loadCSV();
-            startLiveScanner(); 
-        };
-    </script>
-</body>
+    <script src="./app.js" type="module"></script>
+  </body>
 </html>
