@@ -296,6 +296,8 @@ async function tryLoadZxing() {
       window.ZXing.BarcodeFormat.PDF_417,
     ]);
     hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
+    // PURE_BARCODE: skip QR finder-pattern search, speeds up 1-D decode
+    hints.set(window.ZXing.DecodeHintType.PURE_BARCODE, false);
     state.zxingReader.setHints(hints);
     return true;
   } catch {
@@ -346,22 +348,77 @@ async function prepareDecoders() {
 }
 
 /* =========================================================
-   Shared frame capture helper
+   Frame capture – cropped to the scan-zone rectangle
    ========================================================= */
-function captureFrame() {
+/**
+ * Captures only the region inside the visible scan frame.
+ * For ZBar / ZXing this dramatically reduces noise from the
+ * EAN / UPC / SKU barcodes that sit outside the green frame.
+ *
+ * The scan frame CSS is: width = min(88%, 380px), aspect-ratio 4:1, centred.
+ * We mirror that calculation in pixel-space accounting for object-fit:cover.
+ */
+function captureFrameCropped() {
   const video = el.preview;
   if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
-  const w = video.videoWidth  || 640;
-  const h = video.videoHeight || 480;
-  if (state.frameCanvas.width  !== w) state.frameCanvas.width  = w;
-  if (state.frameCanvas.height !== h) state.frameCanvas.height = h;
-  state.frameCtx.drawImage(video, 0, 0, w, h);
-  return state.frameCtx.getImageData(0, 0, w, h);
+
+  const vw = video.videoWidth  || 640;
+  const vh = video.videoHeight || 480;
+
+  // Stage display dimensions
+  const stageW = el.cameraStage.clientWidth  || vw;
+  const stageH = el.cameraStage.clientHeight || vh;
+
+  // ── Map video coords → stage coords (object-fit: cover) ──────────────
+  // One axis fills exactly; the other is clipped (negative offset)
+  const stageAspect = stageW / stageH;
+  const videoAspect = vw / vh;
+  let visW, visH, offX, offY;
+  if (videoAspect > stageAspect) {
+    // Video wider → height fills, width overflows
+    visH = vh;
+    visW = stageAspect * vh;
+    offX = (vw - visW) / 2;
+    offY = 0;
+  } else {
+    // Video taller → width fills, height overflows
+    visW = vw;
+    visH = vw / stageAspect;
+    offX = 0;
+    offY = (vh - visH) / 2;
+  }
+
+  // ── Scan frame size in CSS pixels ────────────────────────────────────
+  const frameWcss = Math.min(stageW * 0.88, 380);
+  const frameHcss = frameWcss / 4;   // aspect-ratio 4:1
+
+  // Convert scan frame to video-pixel crop
+  const scaleX = visW / stageW;
+  const scaleY = visH / stageH;
+
+  const frameWvid = frameWcss * scaleX;
+  const frameHvid = frameHcss * scaleY;
+
+  // Centred in the visible video region
+  const cropX = offX + (visW - frameWvid) / 2;
+  const cropY = offY + (visH - frameHvid) / 2;
+
+  // Add 15% vertical padding so slightly tilted barcodes still decode
+  const padY  = frameHvid * 0.15;
+  const sx    = Math.max(0, Math.round(cropX));
+  const sy    = Math.max(0, Math.round(cropY - padY));
+  const sw    = Math.min(vw - sx, Math.round(frameWvid));
+  const sh    = Math.min(vh - sy, Math.round(frameHvid + padY * 2));
+
+  if (state.frameCanvas.width  !== sw) state.frameCanvas.width  = sw;
+  if (state.frameCanvas.height !== sh) state.frameCanvas.height = sh;
+  state.frameCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+  return state.frameCtx.getImageData(0, 0, sw, sh);
 }
 
-/**
- * ZXing decode from already-captured ImageData (synchronous).
- */
+/* =========================================================
+   ZXing – synchronous decode from ImageData
+   ========================================================= */
 function zxingDecodeImageData(imageData) {
   if (!state.zxingReader) return null;
   try {
@@ -371,8 +428,43 @@ function zxingDecodeImageData(imageData) {
     const result = state.zxingReader.decode(bitmap);
     return result ? result.getText() : null;
   } catch {
-    return null; // NotFoundException is normal when no barcode in view
+    return null; // NotFoundException is expected when no barcode in frame
   }
+}
+
+/**
+ * Race ZBar and ZXing on the same ImageData.
+ * Both run concurrently; we return whichever finds a result first.
+ * ZBar is async (WASM), ZXing is sync – wrapping in Promise lets them
+ * both start before we await.
+ */
+async function raceDecoders(imageData) {
+  const tasks = [];
+
+  if (state.zbarScan) {
+    tasks.push(
+      state.zbarScan(imageData)
+        .then((syms) => (syms && syms.length > 0 ? syms[0].decode() : null))
+        .catch(() => null)
+    );
+  }
+  if (state.zxingReader) {
+    // Wrap sync call in a resolved Promise so it races fairly
+    tasks.push(Promise.resolve(zxingDecodeImageData(imageData)));
+  }
+
+  if (tasks.length === 0) return null;
+
+  // Custom race: first non-null value wins
+  return new Promise((resolve) => {
+    let remaining = tasks.length;
+    tasks.forEach((p) =>
+      p.then((val) => {
+        if (val !== null) resolve(val);
+        else if (--remaining === 0) resolve(null);
+      })
+    );
+  });
 }
 
 /* =========================================================
@@ -384,7 +476,7 @@ async function scanLoop() {
   let rawValue = null;
 
   try {
-    /* ── Engine 1: Native BarcodeDetector ────────────────────────────── */
+    /* ── Engine 1: Native BarcodeDetector (Chrome/Edge) ─────────────── */
     if (state.detector) {
       if (el.preview.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
         const codes = await state.detector.detect(el.preview);
@@ -392,22 +484,10 @@ async function scanLoop() {
       }
 
     } else {
-      /* ── Engines 2 & 3: capture frame ONCE, pass to ZBar then ZXing ── */
-      const imageData = captureFrame();
+      /* ── Engines 2+3: ZBar ∥ ZXing on cropped scan-zone frame ──────── */
+      const imageData = captureFrameCropped();
       if (imageData) {
-
-        /* Engine 2: ZBar WASM (fast, excellent for Code-128) */
-        if (state.zbarScan && rawValue === null) {
-          const symbols = await state.zbarScan(imageData);
-          if (symbols && symbols.length > 0) {
-            rawValue = symbols[0].decode();
-          }
-        }
-
-        /* Engine 3: ZXing-js (fallback if ZBar found nothing) */
-        if (state.zxingReader && rawValue === null) {
-          rawValue = zxingDecodeImageData(imageData);
-        }
+        rawValue = await raceDecoders(imageData);
       }
     }
   } catch { /* ignore per-frame errors */ }

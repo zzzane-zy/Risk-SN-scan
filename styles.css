@@ -429,13 +429,18 @@ button:focus-visible,
 /* ---------- Result dialog ---------- */
 .result-dialog {
   width: min(calc(100% - 34px), 420px);
-  border: 0;
+  border: 2.5px solid transparent;
   border-radius: 14px;
   padding: 0;
   color: var(--ink);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
   animation: dialogPop 0.25s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+  overflow: hidden;
 }
+/* Coloured outline per result type */
+.result-dialog.ok   { border-color: var(--ok); }
+.result-dialog.risk { border-color: var(--risk); }
+
 @keyframes dialogPop {
   from { transform: scale(0.88); opacity: 0; }
   to   { transform: scale(1);    opacity: 1; }
@@ -450,32 +455,48 @@ button:focus-visible,
   padding: 24px;
 }
 
+/* ─── Full-width coloured header (replaces the 5px strip) ─────────────── */
 .result-mark {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 6px;
-  background: var(--warn-soft);
-  color: var(--warn);
-  font-size: 11px;
+  justify-content: center;
+  gap: 7px;
+  /* stretch across dialog-body padding */
+  width: calc(100% + 48px);
+  margin: -24px -24px 20px;
+  min-height: 60px;
+  padding: 14px 24px;
+  font-size: 15px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  /* default / notice */
+  background: var(--warn-soft);
+  color: var(--warn);
 }
-.result-dialog.risk .result-mark { background: var(--risk-soft); color: var(--risk); }
-.result-dialog.ok   .result-mark { background: var(--ok-soft);   color: var(--ok); }
 
-/* Colored top bar for dialog */
-.result-dialog::before {
-  content: "";
-  display: block;
-  height: 5px;
-  border-radius: 14px 14px 0 0;
-  background: var(--warn);
+/* RISK: solid red header + icon */
+.result-dialog.risk .result-mark {
+  background: var(--risk);
+  color: #fff;
 }
-.result-dialog.risk::before { background: var(--risk); }
-.result-dialog.ok::before   { background: var(--ok); }
+.result-dialog.risk .result-mark::before {
+  content: "⚠";
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* OK: solid green header + icon */
+.result-dialog.ok .result-mark {
+  background: var(--ok);
+  color: #fff;
+}
+.result-dialog.ok .result-mark::before {
+  content: "✓";
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
 
 .dialog-body h2 {
   margin: 14px 0 0;
@@ -496,7 +517,26 @@ button:focus-visible,
   line-height: 1.5;
   color: var(--muted);
 }
-.dialog-button { width: 100%; }
+
+/* Button: coloured to match result type */
+.dialog-button {
+  width: 100%;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+.result-dialog.ok   .dialog-button {
+  background: var(--ok);
+  box-shadow: 0 3px 12px rgba(21, 115, 71, 0.35);
+}
+.result-dialog.ok   .dialog-button:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+.result-dialog.risk .dialog-button {
+  background: var(--risk);
+  box-shadow: 0 3px 12px rgba(180, 35, 24, 0.35);
+}
+.result-dialog.risk .dialog-button:hover:not(:disabled) {
+  background: #8f1b13;
+}
 
 /* ---------- Lens panel (pre-scan selector) ---------- */
 .lens-panel {
