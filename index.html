@@ -56,6 +56,28 @@
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 7V3h4M14 3h4v4M18 13v4h-4M6 17H2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span data-i18n="tapFocus">点击对焦</span>
           </div>
+
+          <!-- Camera / lens switcher overlay (shown while live) -->
+          <div class="lens-bar" id="lensBar" aria-label="Switch camera lens">
+            <button id="lensPrev" class="lens-btn" type="button" aria-label="Previous lens">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M12 5l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span id="lensLabel" class="lens-label">—</span>
+            <button id="lensNext" class="lens-btn" type="button" aria-label="Next lens">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M8 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Lens selector panel (shown before scanning starts) -->
+        <div class="lens-panel" id="lensPanel">
+          <label class="lens-panel-label" for="cameraSelect">
+            <svg viewBox="0 0 20 20" fill="none" width="14" height="14" aria-hidden="true"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+            <span data-i18n="selectLens">选择镜头</span>
+          </label>
+          <select id="cameraSelect" class="camera-select">
+            <option value="" data-i18n="defaultCam">默认后置摄像头</option>
+          </select>
         </div>
 
         <p class="instruction" data-i18n="instruction">

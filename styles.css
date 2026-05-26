@@ -187,10 +187,10 @@ h1 {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(76%, 320px);
-  aspect-ratio: 1;
+  width: min(88%, 380px);
+  aspect-ratio: 4 / 1;
   transform: translate(-50%, -50%);
-  border-radius: 12px;
+  border-radius: 10px;
   pointer-events: none;
   overflow: hidden;
 }
@@ -222,16 +222,16 @@ h1 {
 /* Corner markers */
 .corner {
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-color: #1bc46c;
   border-style: solid;
   border-radius: 3px;
 }
-.corner.tl { top: 0; left: 0;  border-width: 3px 0 0 3px; border-top-left-radius: 10px; }
-.corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 10px; }
-.corner.bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-bottom-left-radius: 10px; }
-.corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 10px; }
+.corner.tl { top: 0; left: 0;  border-width: 3px 0 0 3px; border-top-left-radius: 8px; }
+.corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 8px; }
+.corner.bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-bottom-left-radius: 8px; }
+.corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 8px; }
 
 /* Scan line animation */
 .scan-line {
@@ -498,6 +498,113 @@ button:focus-visible,
 }
 .dialog-button { width: 100%; }
 
+/* ---------- Lens panel (pre-scan selector) ---------- */
+.lens-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #f7faf8;
+}
+
+.lens-panel-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.camera-select {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.camera-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ---------- Lens bar overlay (while camera is live) ---------- */
+.lens-bar {
+  position: absolute;
+  bottom: 46px; /* sit above the focus-hint */
+  left: 50%;
+  transform: translateX(-50%);
+  display: none; /* shown by JS when live */
+  align-items: center;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 24px;
+  padding: 4px 4px;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.camera-stage.is-live .lens-bar {
+  display: flex;
+}
+
+.lens-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+
+.lens-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.14);
+}
+
+.lens-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.lens-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.lens-label {
+  min-width: 76px;
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0 4px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 380px) {
   .app-shell { padding-inline: 12px; }
@@ -506,4 +613,6 @@ button:focus-visible,
   .button-row { grid-template-columns: 1fr 1fr; }
   .file-button { grid-column: 1 / -1; }
   .entry-row { grid-template-columns: 1fr; }
+  .lens-panel { flex-direction: column; align-items: flex-start; }
+  .camera-select { width: 100%; }
 }
